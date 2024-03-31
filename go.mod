@@ -1,6 +1,6 @@
 module github.com/arashrasoulzadeh/go-content
 
-go 1.23
+go 1.22
 
 require (
 	go.uber.org/dig v1.17.1 // indirect
