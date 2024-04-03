@@ -1,9 +1,9 @@
 package main
 
 import (
+	providers2 "github.com/arashrasoulzadeh/go-content/providers"
 	"net/http"
 
-	"github.com/arashrasoulzadeh/go-content/.vscode/providers"
 	"github.com/arashrasoulzadeh/go-content/handlers"
 	"github.com/arashrasoulzadeh/go-content/routes"
 	"go.uber.org/fx"
@@ -17,9 +17,9 @@ func main() {
 			return &fxevent.ZapLogger{Logger: log}
 		}),
 		fx.Provide(
-			providers.NewMongoconnection,
-			providers.NewHTTPServer,
-			providers.NewServeMux,
+			providers2.NewMongoconnection,
+			providers2.NewHTTPServer,
+			providers2.NewServeMux,
 			fx.Annotate(handlers.NewPublicHandler, fx.As(new(routes.PublicRoute))),
 			zap.NewExample,
 		),
