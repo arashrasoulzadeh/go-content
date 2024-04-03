@@ -17,6 +17,7 @@ func main() {
 			return &fxevent.ZapLogger{Logger: log}
 		}),
 		fx.Provide(
+			providers.NewMongoconnection,
 			providers.NewHTTPServer,
 			providers.NewServeMux,
 			fx.Annotate(handlers.NewPublicHandler, fx.As(new(routes.PublicRoute))),
