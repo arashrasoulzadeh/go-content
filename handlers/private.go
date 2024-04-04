@@ -3,9 +3,11 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
 )
 
@@ -37,8 +39,13 @@ func (h *PrivateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	// Split the URL path by "/"
+	pathParts := strings.Split(r.URL.Path, "/")
 
-	var p PrivateRequest
+	// Get the last part of the path, which should be the language code
+	languageCode := pathParts[len(pathParts)-1]
+
+	var p map[string]string
 
 	// Decode the request body into the struct
 	err := json.NewDecoder(r.Body).Decode(&p)
@@ -47,54 +54,23 @@ func (h *PrivateHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if the data is empty
-	if p.Item == "" {
-		ErrorResponse(w, "item needed!", http.StatusBadRequest)
-		return
-	}
-	// Check if the key is empty
-	if p.Key == "" {
-		ErrorResponse(w, "key needed!", http.StatusBadRequest)
-		return
-	}
-	// Check if the value is empty
-	if p.Key == "" {
-		ErrorResponse(w, "value needed!", http.StatusBadRequest)
-		return
-	}
-
 	// Respond with the data
 	w.Header().Set("Content-Type", "application/json")
 
-	result := h.db.Collection("content").FindOne(r.Context(), bson.M{"item": p.Item})
-
-	// Check if the data is empty
-	if result.Err() != nil {
-
-		document := bson.M{"item": p.Item, "data": bson.M{p.Key: p.Value}}
-
-		// Insert the document into the collection
-		doc, err := h.db.Collection("content").InsertOne(r.Context(), document)
-		if err != nil {
-			ErrorResponse(w, "Failed to create document:"+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		json.NewEncoder(w).Encode(map[string]interface{}{"status": "created new item", "id": doc.InsertedID})
-		return
+	filter := bson.M{"language_code": languageCode}
+	update := bson.M{
+		"$set": p,
 	}
-
-	var data interface{}
-	result.Decode(&data)
-	update := bson.M{"$set": bson.M{"data." + p.Key: p.Value}}
-
-	updateResult, err := h.db.Collection("content").UpdateOne(r.Context(), bson.M{"item": p.Item}, update)
+	opts := options.Update().SetUpsert(true)
+	_, err = h.db.Collection("content").UpdateOne(r.Context(), filter, update, opts)
 	if err != nil {
-		ErrorResponse(w, "Failed to update document:"+err.Error(), http.StatusInternalServerError)
+		ErrorResponse(w, "cant update", http.StatusBadRequest)
 		return
 	}
-	json.NewEncoder(w).Encode(map[string]interface{}{"status": "updated old item!", "data": updateResult})
+
+	json.NewEncoder(w).Encode(map[string]interface{}{"status": "done"})
 }
 
 func (*PrivateHandler) Pattern() string {
-	return "/private"
+	return "/private/{languageCode}"
 }

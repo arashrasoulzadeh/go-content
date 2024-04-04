@@ -2,7 +2,9 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
+	"strings"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -24,54 +26,36 @@ func NewPublicHandler(log *zap.Logger, db *mongo.Database) *PublicHandler {
 	}
 }
 
-type PublicRequest struct {
-	Item string `json:"item"` // Use struct tags to match JSON keys
-}
-
-type PublicData struct {
-	Item string
-	Data map[string]string
-}
-
 func (h *PublicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Ensure that the request method is POST
 	if r.Method != http.MethodPost {
 		ErrorResponse(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+	// Split the URL path by "/"
+	pathParts := strings.Split(r.URL.Path, "/")
 
-	var p PublicRequest
-
-	// Decode the request body into the struct
-	err := json.NewDecoder(r.Body).Decode(&p)
-	if err != nil {
-		ErrorResponse(w, "Invalid JSON format", http.StatusBadRequest)
-		return
-	}
-
-	// Check if the key is empty
-	if p.Item == "" {
-		ErrorResponse(w, "Key needed!", http.StatusBadRequest)
-		return
-	}
+	// Get the last part of the path, which should be the language code
+	languageCode := pathParts[len(pathParts)-1]
 
 	// Respond with the key
 	w.Header().Set("Content-Type", "application/json")
 
-	result := h.db.Collection("content").FindOne(r.Context(), bson.M{"item": p.Item})
-
-	// Check if the key is empty
-	if result.Err() != nil {
-		ErrorResponse(w, "item not found!", http.StatusBadRequest)
+	filter := bson.M{"language_code": languageCode}
+	content := make(map[string]string)
+	err := h.db.Collection("content").FindOne(r.Context(), filter, nil).Decode(content)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			ErrorResponse(w, "not found", http.StatusNotFound)
+			return
+		}
+		ErrorResponse(w, "internal server error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	var data PublicData
 
-	result.Decode(&data)
-
-	json.NewEncoder(w).Encode(map[string]interface{}{"payload": data})
+	json.NewEncoder(w).Encode(content)
 }
 
 func (*PublicHandler) Pattern() string {
-	return "/public"
+	return "/public/{languageCode}"
 }
