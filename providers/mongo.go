@@ -11,17 +11,16 @@ import (
 
 func NewMongoconnection() *mongo.Database {
 	uri := os.Getenv("MONGODB_URI")
+	if uri == "" {
+		panic("database uri not provided")
+	}
 	db := os.Getenv("MONGODB_NAME")
 	if db == "" {
-		panic("database not provided")
+		panic("database name not provided")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
-	defer func() {
-		if err = client.Disconnect(ctx); err != nil {
-			panic(err)
-		}
-	}()
+	client, _ := mongo.Connect(ctx, options.Client().ApplyURI(uri))
+
 	return client.Database(db)
 }

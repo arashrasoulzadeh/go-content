@@ -25,10 +25,12 @@ func NewPublicHandler(log *zap.Logger, db *mongo.Database) *PublicHandler {
 }
 
 type PublicRequest struct {
-	Key string `json:"key"` // Use struct tags to match JSON keys
+	Item string `json:"item"` // Use struct tags to match JSON keys
 }
-type ErrorStruct struct {
-	Error string `json:"error"`
+
+type PublicData struct {
+	Item string
+	Data map[string]string
 }
 
 func (h *PublicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -48,7 +50,7 @@ func (h *PublicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if the key is empty
-	if p.Key == "" {
+	if p.Item == "" {
 		ErrorResponse(w, "Key needed!", http.StatusBadRequest)
 		return
 	}
@@ -56,21 +58,18 @@ func (h *PublicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Respond with the key
 	w.Header().Set("Content-Type", "application/json")
 
-	cursor, err := h.db.Collection("conent").Find(r.Context(), bson.M{"key": p.Key})
+	result := h.db.Collection("content").FindOne(r.Context(), bson.M{"item": p.Item})
 
 	// Check if the key is empty
-	if err != nil {
-		ErrorResponse(w, "Key not found!", http.StatusBadRequest)
+	if result.Err() != nil {
+		ErrorResponse(w, "item not found!", http.StatusBadRequest)
 		return
 	}
+	var data PublicData
 
-	json.NewEncoder(w).Encode(map[string]string{"key": cursor.Current.String()})
-}
+	result.Decode(&data)
 
-func ErrorResponse(w http.ResponseWriter, msg string, status int) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(ErrorStruct{Error: msg})
+	json.NewEncoder(w).Encode(map[string]interface{}{"payload": data})
 }
 
 func (*PublicHandler) Pattern() string {

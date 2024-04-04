@@ -1,8 +1,9 @@
 package main
 
 import (
-	providers2 "github.com/arashrasoulzadeh/go-content/providers"
 	"net/http"
+
+	providers2 "github.com/arashrasoulzadeh/go-content/providers"
 
 	"github.com/arashrasoulzadeh/go-content/handlers"
 	"github.com/arashrasoulzadeh/go-content/routes"
@@ -21,6 +22,7 @@ func main() {
 			providers2.NewHTTPServer,
 			providers2.NewServeMux,
 			fx.Annotate(handlers.NewPublicHandler, fx.As(new(routes.PublicRoute))),
+			fx.Annotate(handlers.NewPrivateHandler, fx.As(new(routes.PrivateRoute))),
 			zap.NewExample,
 		),
 		fx.Invoke(func(*http.Server) {}),

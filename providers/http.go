@@ -29,8 +29,9 @@ func NewHTTPServer(lc fx.Lifecycle, mux *http.ServeMux, log *zap.Logger) *http.S
 	return srv
 }
 
-func NewServeMux(publicRoute routes.PublicRoute) *http.ServeMux {
+func NewServeMux(publicRoute routes.PublicRoute, privateRoute routes.PrivateRoute) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle(publicRoute.Pattern(), publicRoute)
+	mux.Handle(privateRoute.Pattern(), privateRoute)
 	return mux
 }
