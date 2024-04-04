@@ -9,8 +9,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func NewMongoconnection() *mongo.Client {
+func NewMongoconnection() *mongo.Database {
 	uri := os.Getenv("MONGODB_URI")
+	db := os.Getenv("MONGODB_NAME")
+	if db == "" {
+		panic("database not provided")
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
@@ -19,5 +23,5 @@ func NewMongoconnection() *mongo.Client {
 			panic(err)
 		}
 	}()
-	return client
+	return client.Database(db)
 }
